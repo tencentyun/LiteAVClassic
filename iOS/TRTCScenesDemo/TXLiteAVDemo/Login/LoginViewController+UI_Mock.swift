@@ -1,5 +1,5 @@
 //
-//  LoginViewController+UI.swift
+//  TRTCLoginViewController+UI.swift
 //  trtcScenesDemo
 //
 //  Created by xcoderliu on 12/16/19.
@@ -13,7 +13,7 @@ import SnapKit
 import Material
 import Toast_Swift
 
-extension LoginViewController {
+extension TRTCLoginViewController {
     
     /// 绘制UI
     func setupUI() {
@@ -44,7 +44,7 @@ extension LoginViewController {
         }
         
         //UserID
-        let (phoneNumber, numberSignal) = getTextObservable(placeholder: "请输入UserID")
+        let (phoneNumber, numberSignal) = getTextObservable(placeholder: V2Localize("V2.Live.LinkMicNew.enteruserid"))
         phoneNumber.keyboardType = .numberPad
         phoneNumber.delegate = self
         view.addSubview(phoneNumber)
@@ -81,7 +81,7 @@ extension LoginViewController {
                     self.showProfileVC()
                 } else {
                     self.loading.stopAnimating()
-                    self.view.makeToast("登录成功")
+                    self.view.makeToast(V2Localize("V2.Live.LinkMicNew.loginsuccess"))
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                         //show main vc
                         AppUtils.shared.showMainController()
@@ -122,7 +122,7 @@ extension LoginViewController {
                 self.showProfileVC()
             } else {
                 self.loading.stopAnimating()
-                self.view.makeToast("登录成功")
+                self.view.makeToast(V2Localize("V2.Live.LinkMicNew.loginsuccess"))
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                     //show main vc
                     AppUtils.shared.showMainController()
@@ -170,7 +170,7 @@ extension LoginViewController {
 
 //MARK: - UITextFieldDelegate
 
-extension LoginViewController: UITextFieldDelegate {
+extension TRTCLoginViewController: UITextFieldDelegate {
     func textField(_ textField: UITextField, shouldChangeCharactersIn range: NSRange, replacementString string: String) -> Bool {
         let maxCount = 11
         guard let textFieldText = textField.text,

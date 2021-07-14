@@ -68,11 +68,11 @@ let loginBaseUrl = "https://xxx.com/release/"
     func copy() -> UserModel {
         let encoder = JSONEncoder()
         guard let data = try? encoder.encode(self) else {
-            fatalError("encode失败")
+            fatalError("encode failed")
         }
         let decoder = JSONDecoder()
         guard let target = try? decoder.decode(UserModel.self, from: data) else {
-           fatalError("decode失败")
+           fatalError("decode failed")
         }
         return target
     }
@@ -159,8 +159,8 @@ let loginBaseUrl = "https://xxx.com/release/"
             if let respData = data.data, respData.count > 0 {
                 let decoder = JSONDecoder()
                 guard let result = try? decoder.decode(VerifyModel.self, from: respData) else {
-                    failed("VerifyModel decode失败")
-                    fatalError("VerifyModel decode失败")
+                    failed("VerifyModel decode failed")
+                    fatalError("VerifyModel decode failed")
                 }
                 if result.errorCode == 0 , let sessionID = result.data?.sessionId {
                     self.sessionId = sessionID
@@ -169,7 +169,7 @@ let loginBaseUrl = "https://xxx.com/release/"
                     failed(result.errorMessage)
                 }
             } else {
-                failed("发送失败，请稍后重试")
+                failed("Send failed, please try again later.")
             }
         }
     }
@@ -207,11 +207,11 @@ let loginBaseUrl = "https://xxx.com/release/"
                         failed: @escaping (_ error: String)->Void) {
         let nameUrl = loginBaseUrl + "nickname"
         guard let userId = curUserModel?.userId else {
-            failed("注册失败，请稍后重试")
+            failed("Regist failed, please try again later.")
             return
         }
         guard let token = curUserModel?.token else {
-            failed("注册失败，请稍后重试")
+            failed("Regist failed, please try again later.")
             return
         }
         let params = ["userId":userId,"name":name,"token":token] as [String : Any]
@@ -234,7 +234,7 @@ let loginBaseUrl = "https://xxx.com/release/"
                     }
                 }
             } else {
-                failed("注册失败，请稍候重试")
+                failed("Regist failed, please try again later.")
             }
         }
     }
@@ -250,7 +250,7 @@ let loginBaseUrl = "https://xxx.com/release/"
         if phone.count > 0 {
             success(UserModel.init(userID: phone))
         } else {
-            failed("错误的userID")
+            failed("Wrong userID")
         }
     }
     
@@ -265,7 +265,7 @@ let loginBaseUrl = "https://xxx.com/release/"
         if userID.count > 0 {
             success(UserModel.init(userID: userID))
         } else {
-            failed("错误的userID")
+            failed("Wrong userID")
         }
     }
     
@@ -284,7 +284,7 @@ let loginBaseUrl = "https://xxx.com/release/"
             }
             success(models)
         } else {
-            failed("空userIDs")
+            failed("Null userIDs")
         }
     }
     
@@ -293,22 +293,35 @@ let loginBaseUrl = "https://xxx.com/release/"
     ///   - success: 成功
     ///   - failed: 失败
     @objc func IMLogin(userSig: String, success: @escaping ()->Void, failed: @escaping (_ error: String)->Void) {
-        let config = TIMSdkConfig.init()
-        config.sdkAppId = Int32(SDKAPPID)
-        config.dbPath = NSHomeDirectory() + "/Documents/com_tencent_imsdk_data/"
-        TIMManager.sharedInstance()?.initSdk(config)
+        V2TIMManager.sharedInstance()?.initSDK(SDKAPPID, config: nil, listener: nil)
         
         guard let userID = curUserModel?.userId else {
-            failed("userID 错误")
+            failed("userID wrong")
             return
         }
         let user = String(userID)
         let loginParam = TIMLoginParam.init()
         loginParam.identifier = user
         loginParam.userSig = userSig
-        TIMManager.sharedInstance()?.login(loginParam, succ: {
+        V2TIMManager.sharedInstance()?.login(user, userSig: userSig, succ: {
             debugPrint("login success")
-            success()
+            V2TIMManager.sharedInstance()?.getUsersInfo([userID], succ: { [weak self] (infos) in
+                guard let `self` = self else { return }
+                if let info = infos?.first {
+                    self.curUserModel?.avatar = info.faceURL
+                    self.curUserModel?.name = info.nickName
+                    self.curUserModel?.userId = info.userID
+                    success()
+                }
+                else {
+                    failed("")
+                }
+            }, fail: { (code, err) in
+                failed(err ?? "")
+                debugPrint("get user info failed, code:\(code), error: \(err ?? "nil")")
+            })
+            
+            
         }, fail: { (code, errorDes) in
             failed(errorDes ?? "")
             debugPrint("login failed, code:\(code), error: \(errorDes ?? "nil")")
@@ -329,5 +342,19 @@ let loginBaseUrl = "https://xxx.com/release/"
     
     @objc public func curUserSig() -> String {
            return curUserModel?.userSig ?? ""
+    }
+    
+    @objc func synchronizUserInfo() {
+        guard let userModel = curUserModel else {
+            return
+        }
+        let userInfo = V2TIMUserFullInfo()
+        userInfo.nickName = userModel.name
+        userInfo.faceURL = userModel.avatar
+        V2TIMManager.sharedInstance()?.setSelfInfo(userInfo, succ: {
+            debugPrint("set profile success")
+        }, fail: { (code, desc) in
+            debugPrint("set profile failed.")
+        })
     }
 }

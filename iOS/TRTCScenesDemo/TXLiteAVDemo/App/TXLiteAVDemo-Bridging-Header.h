@@ -9,39 +9,31 @@
 
 
 /* TXLiteAVDemo_Bridging_Header_h */
-#ifdef TRTC
-#import "PortalViewController.h"
-#endif
 
+// localized string usage
+#import "AppLocalized.h"
+
+#import "PortalViewController.h"
+
+#import "TCAnchorViewController.h"
+#import "TCAudienceViewController.h"
+#import "TRTCMeeting.h"
+// VocieRoom
+#import "TRTCVoiceRoomDef.h"
+#import "TRTCVoiceRoom.h"
+// ChatSalon
+#import "TRTCChatSalon.h"
+#import "TRTCChatSalonDef.h"
+
+#import "TRTCLiveRoom.h"
+#import "TRTCCalling.h"
 
 #import "AppDelegate.h"
 #import <SDWebImage/SDWebImage.h>
 #import <MJRefresh/MJRefresh.h>
 
-#if !defined(UGC) && !defined(PLAYER)
 #import <ImSDK/ImSDK.h>
 #import "GenerateTestUserSig.h"
-#endif
-
-#ifdef ENTERPRISE
-@import TXLiteAVSDK_TRTC;
-#endif
-
-#ifdef PROFESSIONAL
-@import TXLiteAVSDK_Professional;
-#endif
-
-#ifdef SMART
-@import TXLiteAVSDK_Smart;
-#endif
-
-#ifdef PLAYER
-@import TXLiteAVSDK_Player;
-#endif
-
-#ifdef UGC
-@import TXLiteAVSDK_UGC;
-#endif
 
 #if defined(TRTC) && !defined(TRTC_APPSTORE)
 @import TXLiteAVSDK_TRTC;

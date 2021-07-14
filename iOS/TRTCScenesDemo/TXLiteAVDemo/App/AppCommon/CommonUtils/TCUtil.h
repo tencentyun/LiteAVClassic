@@ -4,9 +4,8 @@
  * Function: 实用函数
  */
 
-#import <Foundation/Foundation.h>
+#import <UIKit/UIKit.h>
 #import "TCLog.h"
-#import <BlocksKit/UIAlertView+BlocksKit.h>
 
 
 #define IPHONE_X \
@@ -15,6 +14,8 @@ if (@available(iOS 11.0, *)) {\
 isPhoneX = [[UIApplication sharedApplication] delegate].window.safeAreaInsets.bottom > 0.0;\
 }\
 (isPhoneX);})
+
+#define SafeAreaTopHeight (IPHONE_X ? 44 : 20)
 
 typedef void(^videoIsReadyBlock)(void);
 

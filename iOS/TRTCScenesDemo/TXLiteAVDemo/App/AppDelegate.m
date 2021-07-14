@@ -8,48 +8,25 @@
 
 #import "AppDelegate.h"
 #import <Bugly/Bugly.h>
+#import "AppLocalized.h"
 
-#ifdef ENABLE_TRTC
 #ifdef ENABLE_PLAY
 #import "TRTCCloud.h"
 #import "TXLiveBase.h"  //TRTC
 #else
 #import "TRTCCloud.h"   //TRTC_Smart
 #endif
-#else
-#import "TXLiveBase.h"  //非TRTC
-#endif
 
-#ifndef UGC_SMART
 #import "AppLogMgr.h"
-#endif
-
-#ifndef TRTC
-#import "MainViewController.h"
-#else
-#import "PortalViewController.h"
-#endif
 
 #import "AFNetworkReachabilityManager.h"
 #import <UserNotifications/UserNotifications.h>
 #import <objc/message.h>
 
-#ifdef ENABLE_UGC
-#import "TXUGCBase.h"
-#endif
-
-#if !defined(UGC) && !defined(PLAYER)
 #import "TXLiteAVDemo-Swift.h"
 #import <ImSDK/ImSDK.h>
-#endif
 
-#if defined(ENTERPRISE) || defined(PROFESSIONAL) || defined(SMART) || defined(TRTC)
 #import "Replaykit2Define.h"
-#endif
-
-#if defined(PLAYER) || defined(PROFESSIONAL) || defined(ENTERPRISE)
-#import "TXLaunchMoviePlayProtocol.h"
-#endif
 
 #define BUGLY_APP_ID @"0"
 
@@ -71,43 +48,20 @@ NSString *helpUrlDb[] = {
     [Help_TRTC] = @"https://cloud.tencent.com/document/product/647/32221",
     };
     
-#if !defined(PLAYER) && !defined(UGC)
 @interface AppDelegate () <UNUserNotificationCenterDelegate, V2TIMAPNSListener>
-#else
-@interface AppDelegate () <UNUserNotificationCenterDelegate>
-#endif
-
-#ifndef TRTC
-@property (nonatomic, strong) MainViewController* mainViewController;
-#else
 @property (nonatomic, strong) PortalViewController* portalVC;
-#endif
 @property (nonatomic, strong) NSDictionary *launchInfo; //从其他应用打开
 @property (nonatomic, assign) BOOL didLaunched;
 @end
 
-
 @implementation AppDelegate
 
-
-#ifndef TRTC
--(MainViewController *)mainViewController{
-    if (!_mainViewController) {
-        _mainViewController = [[MainViewController alloc] init];
-    }
-    return _mainViewController;
-}
-#else
 -(PortalViewController *)portalVC{
     if (!_portalVC) {
         _portalVC = [[UIStoryboard storyboardWithName:@"Portal" bundle:nil] instantiateInitialViewController];
     }
     return _portalVC;
 }
-
-#endif
-
-
 
 - (void)clickHelp:(UIButton *)sender {
     NSURL *helpUrl = [NSURL URLWithString:helpUrlDb[sender.tag]];
@@ -130,11 +84,7 @@ NSString *helpUrlDb[] = {
     //启动bugly组件，bugly组件为腾讯提供的用于crash上报和分析的开放组件，如果您不需要该组件，可以自行移除
     BuglyConfig * config = [[BuglyConfig alloc] init];
     NSString *version = nil;
-#if ENABLE_TRTC
     version = [TRTCCloud getSDKVersion];
-#else
-    version = [TXLiveBase getSDKVersionStr];
-#endif
     
 #if DEBUG
     config.debugMode = YES;
@@ -144,17 +94,8 @@ NSString *helpUrlDb[] = {
     config.channel = @"LiteAV Demo";
     
     [Bugly startWithAppId:BUGLY_APP_ID config:config];
-#ifdef ENABLE_UGC
-    [TXUGCBase setLicenceURL:@"" key:@""];
-#endif
     
-#if defined(ENABLE_PUSH) && !defined(TRTC)
     [TXLiveBase setLicenceURL:@"" key:@""];
-#endif
-    
-#ifdef TRTC
-    [TXLiveBase setLicenceURL:@"" key:@""];
-#endif
     
     NSLog(@"rtmp demo init crash report");
 
@@ -163,18 +104,10 @@ NSString *helpUrlDb[] = {
     
     self.window.backgroundColor = [UIColor whiteColor];
     
-#ifdef ENABLE_TRTC
     [TRTCCloud setConsoleEnabled:NO];
     [TRTCCloud setLogLevel:TRTCLogLevelDebug];
     [TRTCCloud setLogDelegate:[AppLogMgr shareInstance]];
-#else
-    //初始化log模块
-#ifndef UGC_SMART
-    [TXLiveBase sharedInstance].delegate = [AppLogMgr shareInstance];
-    [TXLiveBase setConsoleEnabled:NO];
-    [TXLiveBase setAppID:@"1252463788"];
-#endif
-#endif
+    
     [[UIBarButtonItem appearance] setBackButtonTitlePositionAdjustment:UIOffsetMake(-1000, 0)
                                                          forBarMetrics:UIBarMetricsDefault];
     
@@ -184,22 +117,13 @@ NSString *helpUrlDb[] = {
     [[UINavigationBar appearance] setTitleTextAttributes:@{NSFontAttributeName:[UIFont systemFontOfSize:18],NSForegroundColorAttributeName:[UIColor whiteColor]}];
     [[UINavigationBar appearance] setBackgroundImage:[UIImage imageNamed:@"transparent.png"] forBarMetrics:UIBarMetricsDefault];
     [[UINavigationBar appearance] setShadowImage:[UIImage new]];
-#ifdef NOT_LOGIN
-    [self showPortalConroller];
-#else
     [self showLoginController];
-#endif
-    
     
     [self.window makeKeyAndVisible];
-#ifndef ENABLE_TRTC
-    [[AFNetworkReachabilityManager sharedManager] startMonitoring];
-#endif
 
-#if !defined(PLAYER) && !defined(UGC)
     // 自定义 APP 未读数
     [[V2TIMManager sharedInstance] setAPNSListener:self];
-#endif
+    
     //For ReplayKit2. 使用 UNUserNotificationCenter 来管理通知
     if ([UIDevice currentDevice].systemVersion.floatValue >= 11.0) {
         UNUserNotificationCenter *center = [UNUserNotificationCenter currentNotificationCenter];
@@ -246,35 +170,7 @@ NSString *helpUrlDb[] = {
 
 #pragma mark - 扫码拉起APP播放视频
 - (void)playVideoFromLaunchInfo:(NSDictionary *)launchInfo {
-    #if defined(PLAYER) || defined(PROFESSIONAL) || defined(ENTERPRISE)
-    __weak UINavigationController *rootVC = (UINavigationController *)self.window.rootViewController;
-    if (launchInfo && [rootVC isKindOfClass:[UINavigationController class]]) {
-        if ([self findClass:NSClassFromString(@"LoginViewController") InNav:rootVC]) {
-            //登录流程，等待，这里不作处理，登录成功后showPortalConroller中主动调用这个函数
-        } else if ([self findClass:NSClassFromString(@"MoviePlayerViewController") InNav:rootVC]) {
-            ///已有播放器
-            id<TXLaunchMoviePlayProtocol> vc =
-            (id<TXLaunchMoviePlayProtocol>)[self findVCWith:NSClassFromString(@"MoviePlayerViewController") InNav:rootVC];
-            __weak __typeof(self) weakSelf = self;
-            [vc startPlayVideoFromLaunchInfo:self.launchInfo complete:^(BOOL succ){
-                weakSelf.launchInfo = nil;
-            }];
-        } else {
-            id vc = [[NSClassFromString(@"MoviePlayerViewController") alloc] init];
-            if (vc) {
-                __weak __typeof(self) weakSelf = self;
-                [(id<TXLaunchMoviePlayProtocol>)vc startPlayVideoFromLaunchInfo:self.launchInfo complete:^(BOOL succ){
-                    weakSelf.launchInfo = nil;
-                    if (succ) {
-                        [rootVC pushViewController:vc animated:NO];
-                    }
-                }];
-            } else {
-                NSLog(@"当前版本不包含超级播放器，无法播放视频");
-            }
-        }
-    }
-    #endif
+    
 }
 
 - (UIViewController *)findVCWith:(Class)aclass InNav:(UINavigationController *)nav {
@@ -294,13 +190,7 @@ NSString *helpUrlDb[] = {
 #pragma mark -
 
 -(void)userNotificationCenter:(UNUserNotificationCenter *)center willPresentNotification:(UNNotification *)notification withCompletionHandler:(void (^)(UNNotificationPresentationOptions))completionHandler{
-    #if defined(ENTERPRISE) || defined(PROFESSIONAL) || defined(SMART)
-    if (notification.request.content.userInfo.allKeys.count > 0) {
-        if ([notification.request.content.userInfo[kReplayKit2UploadingKey] isEqualToString:kReplayKit2Stop]) {
-            [[NSNotificationCenter defaultCenter] postNotificationName:kCocoaNotificationNameReplayKit2Stop object:nil];
-        }
-    }
-    #endif
+    
     // 处理完成后条用 completionHandler ，用于指示在前台显示通知的形式
     completionHandler(UNNotificationPresentationOptionSound + UNNotificationPresentationOptionBadge + UNAuthorizationOptionAlert);
 }
@@ -356,25 +246,82 @@ NSString *helpUrlDb[] = {
 
 #pragma mark - 登录跳转方法
 - (void)showPortalConroller {
-    UINavigationController *nav = nil;
-#ifdef TRTC
-    nav = [[UINavigationController alloc] initWithRootViewController:self.portalVC];
-#else
-    nav = [[UINavigationController alloc] initWithRootViewController:self.mainViewController];
-#endif
+    UIViewController *nav = nil;
+    nav = [[MainTabbarController alloc] init];
+    NSString *appStoreID = @"1400663224";
     self.window.rootViewController = nav;
     [self playVideoFromLaunchInfo:self.launchInfo];
+    
+    [self checkStoreVersion:appStoreID];
 }
 
 - (void)showLoginController {
-#ifndef NOT_LOGIN
-    LoginViewController *vc = [[LoginViewController alloc] init];
+    TRTCLoginViewController *vc = [[TRTCLoginViewController alloc] init];
     self.window.rootViewController = [[UINavigationController alloc] initWithRootViewController:vc];
-#endif
 }
 
 #pragma mark - 推送设置回调
 - (uint32_t)onSetAPPUnreadCount {
     return 0;
+}
+
+#pragma mark - 检测商店版本
+- (void)checkStoreVersion:(NSString *)appID {
+    NSString *url = [NSString stringWithFormat:@"https://itunes.apple.com/cn/lookup?id=%@", appID];
+    NSURLRequest * request = [NSURLRequest requestWithURL:[NSURL URLWithString:url]];
+    NSURLSession *session = [NSURLSession sharedSession];
+    __weak __typeof(self) wself = self;
+    NSURLSessionDataTask *task = [session dataTaskWithRequest:request completionHandler:^(NSData * _Nullable data, NSURLResponse * _Nullable response, NSError * _Nullable error) {
+        NSError *err;
+        if (!data || data.length == 0) {
+            NSLog(@"====== no store data ======");
+            return;
+        }
+        NSDictionary *remoteDic = [NSJSONSerialization JSONObjectWithData:data options:NSJSONReadingMutableLeaves error:&err];
+        if (err) {
+            NSLog(@"====== no store info ======");
+            return;
+        }
+        NSArray *array = [remoteDic objectForKey:@"results"];
+        if (array.count < 1) {
+            return;
+        }
+        NSDictionary *appInfo = [array firstObject];
+        NSString *appStoreVersion = [appInfo objectForKey:@"version"];
+        NSLog(@"====== store version info: %@ ======", appStoreVersion);
+        BOOL result = [wself compareVersion:appStoreVersion];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (result) {
+                [wself showUpdateAlertController:appID];
+            }
+        });
+    }];
+    [task resume];
+}
+
+- (BOOL)compareVersion:(NSString *)appStoreVersion {
+    NSDictionary *infoDic = [[NSBundle mainBundle] infoDictionary];
+    NSString *currentVersion = [infoDic objectForKey:@"CFBundleShortVersionString"];
+    NSLog(@"====== current version is %@ ======", currentVersion);
+    return [appStoreVersion compare:currentVersion options:NSNumericSearch] == NSOrderedDescending;
+}
+
+- (void)showUpdateAlertController:(NSString *)appID {
+    
+    UIAlertController *alertController = [UIAlertController alertControllerWithTitle:TRTCLocalize(@"Demo.TRTC.LiveRoom.prompt") message:TRTCLocalize(@"Demo.TRTC.Home.newversionpublic") preferredStyle:UIAlertControllerStyleAlert];
+    UIAlertAction *sureAction = [UIAlertAction actionWithTitle:TRTCLocalize(@"Demo.TRTC.Home.updatenow") style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+        [self openAppStore:appID];
+    }];
+    UIAlertAction *cancelAction = [UIAlertAction actionWithTitle:TRTCLocalize(@"Demo.TRTC.Home.later") style:UIAlertActionStyleCancel handler:nil];
+    [alertController addAction:sureAction];
+    [alertController addAction:cancelAction];
+    if (self.window.rootViewController) {
+        [self.window.rootViewController presentViewController:alertController animated:YES completion:nil];
+    }
+}
+
+- (void)openAppStore:(NSString *)appID {
+    NSURL*url = [NSURL URLWithString:[NSString stringWithFormat:@"https://itunes.apple.com/us/app/id%@?ls=1&mt=8",appID]];
+    [[UIApplication sharedApplication] openURL:url];
 }
 @end
